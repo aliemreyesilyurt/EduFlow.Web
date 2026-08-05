@@ -4,6 +4,7 @@ import { useRoute, RouterLink } from 'vue-router'
 import AuthCard from '@/components/AuthCard.vue'
 import FormField from '@/components/FormField.vue'
 import AlertMessage from '@/components/AlertMessage.vue'
+import BaseButton from '@/components/BaseButton.vue'
 import * as authApi from '@/api/auth'
 import { extractErrorMessage } from '@/api/errors'
 
@@ -63,13 +64,9 @@ async function handleResend() {
       </div>
       <form v-else class="mt-4 space-y-4" @submit.prevent="handleResend">
         <FormField v-model="resendEmail" label="E-posta" type="email" autocomplete="email" />
-        <button
-          type="submit"
-          :disabled="isResending"
-          class="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-        >
+        <BaseButton type="submit" block :disabled="isResending">
           {{ isResending ? 'Gönderiliyor...' : 'Doğrulama Bağlantısını Tekrar Gönder' }}
-        </button>
+        </BaseButton>
       </form>
     </template>
 

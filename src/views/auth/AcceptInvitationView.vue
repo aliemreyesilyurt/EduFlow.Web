@@ -4,6 +4,7 @@ import { useRoute, useRouter, RouterLink } from 'vue-router'
 import AuthCard from '@/components/AuthCard.vue'
 import FormField from '@/components/FormField.vue'
 import AlertMessage from '@/components/AlertMessage.vue'
+import BaseButton from '@/components/BaseButton.vue'
 import * as authApi from '@/api/auth'
 import { extractErrorMessage } from '@/api/errors'
 import { useAuthStore } from '@/stores/auth'
@@ -61,13 +62,9 @@ async function handleSubmit() {
           minlength="8"
         />
 
-        <button
-          type="submit"
-          :disabled="isSubmitting"
-          class="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-        >
+        <BaseButton type="submit" block :disabled="isSubmitting">
           {{ isSubmitting ? 'Kaydediliyor...' : 'Daveti Kabul Et ve Giriş Yap' }}
-        </button>
+        </BaseButton>
       </form>
     </template>
 

@@ -45,3 +45,7 @@ export function logoutAll() {
 export function acceptInvitation(userId, token, password) {
   return http.post('auth/invitations/accept', { userId, token, password }, skipRefresh).then((r) => r.data)
 }
+
+export function inviteInstructor(email, firstName, lastName) {
+  return http.post('auth/instructors', { email, firstName, lastName }).then((r) => r.data)
+}

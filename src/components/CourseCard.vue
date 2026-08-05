@@ -10,9 +10,9 @@ defineProps({
 <template>
   <RouterLink
     :to="{ name: 'course-detail', params: { id: course.id } }"
-    class="block rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300 hover:shadow-md"
+    class="block rounded-lg border border-slate-200 bg-white p-5 shadow-card transition duration-150 hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md"
   >
-    <h3 class="font-semibold text-slate-800">{{ course.title }}</h3>
+    <h3 class="font-heading font-semibold text-slate-800">{{ course.title }}</h3>
     <p class="mt-1 text-sm text-slate-500">{{ course.instructorName }}</p>
     <p v-if="course.description" class="mt-2 line-clamp-2 text-sm text-slate-600">
       {{ course.description }}

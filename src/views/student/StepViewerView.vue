@@ -4,12 +4,16 @@ import { RouterLink } from 'vue-router'
 import CommentList from '@/components/CommentList.vue'
 import CommentForm from '@/components/CommentForm.vue'
 import AlertMessage from '@/components/AlertMessage.vue'
+import BaseButton from '@/components/BaseButton.vue'
+import BaseCard from '@/components/BaseCard.vue'
+import SkeletonBlock from '@/components/SkeletonBlock.vue'
 import * as stepsApi from '@/api/steps'
 import * as enrollmentsApi from '@/api/enrollments'
 import * as commentsApi from '@/api/comments'
 import { extractErrorMessage } from '@/api/errors'
 import { StepContentType } from '@/constants/enums'
 import { toEmbedUrl } from '@/utils/video'
+import { isInternalContentUrl, fetchProtectedContentBlobUrl } from '@/utils/content'
 
 const props = defineProps({
   courseId: { type: String, required: true },
@@ -24,6 +28,7 @@ const error = ref('')
 const isCompleting = ref(false)
 const isCommenting = ref(false)
 const completionStatus = ref(null)
+const protectedContentUrl = ref(null)
 
 const currentIndex = computed(() => allSteps.value.findIndex((s) => s.id === props.stepId))
 const previousStep = computed(() => (currentIndex.value > 0 ? allSteps.value[currentIndex.value - 1] : null))
@@ -35,10 +40,21 @@ const nextStep = computed(() =>
 
 const embedUrl = computed(() => (step.value?.contentType === StepContentType.Video ? toEmbedUrl(step.value.contentUrl) : null))
 
+// Files uploaded through the instructor panel are served from our own API behind auth,
+// so they can't be used directly as a <video>/<a> src — resolve them to a blob URL first.
+const resolvedContentUrl = computed(() =>
+  isInternalContentUrl(step.value?.contentUrl) ? protectedContentUrl.value : step.value?.contentUrl,
+)
+
 async function load() {
   isLoading.value = true
   error.value = ''
   completionStatus.value = null
+
+  if (protectedContentUrl.value) {
+    URL.revokeObjectURL(protectedContentUrl.value)
+    protectedContentUrl.value = null
+  }
 
   try {
     const [stepData, stepsData, commentsData] = await Promise.all([
@@ -50,6 +66,10 @@ async function load() {
     step.value = stepData
     allSteps.value = stepsData
     comments.value = commentsData
+
+    if (isInternalContentUrl(stepData.contentUrl) && stepData.contentType !== StepContentType.Text) {
+      protectedContentUrl.value = await fetchProtectedContentBlobUrl(stepData.contentUrl)
+    }
   } catch (err) {
     error.value = extractErrorMessage(err, 'Adım yüklenemedi.')
   } finally {
@@ -87,7 +107,10 @@ async function handleComment(content) {
 </script>
 
 <template>
-  <div v-if="isLoading" class="text-sm text-slate-500">Yükleniyor...</div>
+  <BaseCard v-if="isLoading">
+    <SkeletonBlock class="h-5 w-1/3" />
+    <SkeletonBlock class="mt-4 h-48 w-full" />
+  </BaseCard>
 
   <AlertMessage v-else-if="error && !step" variant="error">{{ error }}</AlertMessage>
 
@@ -98,7 +121,7 @@ async function handleComment(content) {
 
     <AlertMessage v-if="error" variant="error">{{ error }}</AlertMessage>
 
-    <div class="rounded-lg border border-slate-200 bg-white p-6">
+    <BaseCard>
       <h1 class="text-lg font-semibold text-slate-800">{{ step.order }}. {{ step.title }}</h1>
 
       <div class="mt-4">
@@ -114,12 +137,12 @@ async function handleComment(content) {
             allowfullscreen
             frameborder="0"
           />
-          <video v-else-if="step.contentUrl" :src="step.contentUrl" controls class="w-full rounded-md" />
+          <video v-else-if="resolvedContentUrl" :src="resolvedContentUrl" controls class="w-full rounded-md" />
         </template>
 
         <a
-          v-else-if="step.contentType === StepContentType.Document && step.contentUrl"
-          :href="step.contentUrl"
+          v-else-if="step.contentType === StepContentType.Document && resolvedContentUrl"
+          :href="resolvedContentUrl"
           target="_blank"
           rel="noopener noreferrer"
           class="inline-block rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-slate-50"
@@ -139,14 +162,9 @@ async function handleComment(content) {
           </RouterLink>
         </div>
 
-        <button
-          type="button"
-          :disabled="isCompleting"
-          class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-          @click="handleComplete"
-        >
+        <BaseButton :disabled="isCompleting" @click="handleComplete">
           {{ isCompleting ? 'Kaydediliyor...' : 'Tamamlandı İşaretle' }}
-        </button>
+        </BaseButton>
 
         <RouterLink
           v-if="nextStep"
@@ -165,14 +183,14 @@ async function handleComment(content) {
           completionStatus.progressPercentage.toFixed(0)
         }})
       </p>
-    </div>
+    </BaseCard>
 
-    <div class="rounded-lg border border-slate-200 bg-white p-6">
+    <BaseCard>
       <h2 class="mb-3 text-sm font-semibold text-slate-700">Yorumlar</h2>
       <CommentList :comments="comments" />
       <div class="mt-4">
         <CommentForm :is-submitting="isCommenting" @submit="handleComment" />
       </div>
-    </div>
+    </BaseCard>
   </div>
 </template>

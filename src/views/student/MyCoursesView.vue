@@ -3,6 +3,9 @@ import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import ProgressBar from '@/components/ProgressBar.vue'
 import AlertMessage from '@/components/AlertMessage.vue'
+import SkeletonBlock from '@/components/SkeletonBlock.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import IconBookOpen from '@/components/icons/IconBookOpen.vue'
 import * as enrollmentsApi from '@/api/enrollments'
 import { extractErrorMessage } from '@/api/errors'
 
@@ -27,14 +30,22 @@ onMounted(async () => {
 
     <AlertMessage v-if="error" variant="error">{{ error }}</AlertMessage>
 
-    <p v-else-if="isLoading" class="text-sm text-slate-500">Yükleniyor...</p>
+    <div v-else-if="isLoading" class="space-y-4">
+      <div v-for="n in 3" :key="n" class="rounded-lg border border-slate-200 bg-white p-5">
+        <SkeletonBlock class="h-4 w-1/3" />
+        <SkeletonBlock class="mt-2 h-3 w-1/4" />
+        <SkeletonBlock class="mt-4 h-2 w-full" />
+      </div>
+    </div>
 
-    <p v-else-if="myCourses.length === 0" class="text-sm text-slate-500">
-      Henüz bir kursa kayıtlı değilsin.
-      <RouterLink :to="{ name: 'course-catalog' }" class="text-indigo-600 hover:underline">
-        Kurs kataloğuna göz at
-      </RouterLink>
-    </p>
+    <EmptyState v-else-if="myCourses.length === 0" title="Henüz bir kursa kayıtlı değilsin.">
+      <template #icon><IconBookOpen /></template>
+      <template #action>
+        <RouterLink :to="{ name: 'course-catalog' }" class="text-sm font-medium text-indigo-600 hover:underline">
+          Kurs kataloğuna göz at
+        </RouterLink>
+      </template>
+    </EmptyState>
 
     <ul v-else class="space-y-4">
       <li
