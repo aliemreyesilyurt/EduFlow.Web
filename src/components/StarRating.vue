@@ -22,8 +22,8 @@ function setValue(value) {
       type="button"
       class="leading-none"
       :class="[
-        star <= Math.round(modelValue) ? 'text-amber-400' : 'text-slate-300',
-        !readonly && 'cursor-pointer hover:text-amber-400',
+        star <= Math.round(modelValue) ? 'text-warning' : 'text-slate-300',
+        !readonly && 'cursor-pointer hover:text-warning',
       ]"
       @click="setValue(star)"
     >

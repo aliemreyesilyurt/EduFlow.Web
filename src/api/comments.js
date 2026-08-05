@@ -15,3 +15,11 @@ export function createCourseComment(courseId, content) {
 export function createStepComment(stepId, content) {
   return http.post(`steps/${stepId}/comments`, { content }).then((r) => r.data)
 }
+
+export function hideComment(commentId) {
+  return http.post(`comments/${commentId}/hide`).then((r) => r.data)
+}
+
+export function unhideComment(commentId) {
+  return http.post(`comments/${commentId}/unhide`).then((r) => r.data)
+}
