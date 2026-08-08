@@ -181,6 +181,14 @@ async function handleComment(content) {
       </div>
     </BaseCard>
 
+    <BaseCard v-if="isEnrolled && myEnrollment.completedOn && course.examId">
+      <h2 class="mb-2 text-sm font-semibold text-slate-700">Sınav</h2>
+      <p class="mb-3 text-sm text-slate-500">Kursu tamamladın, sınava girebilirsin.</p>
+      <RouterLink :to="{ name: 'exam-take', params: { courseId: course.id } }">
+        <BaseButton>Sınava Gir</BaseButton>
+      </RouterLink>
+    </BaseCard>
+
     <BaseCard v-if="isEnrolled">
       <h2 class="mb-3 text-sm font-semibold text-slate-700">Puanın</h2>
       <div class="flex items-center gap-3">
