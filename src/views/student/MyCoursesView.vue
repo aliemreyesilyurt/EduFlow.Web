@@ -61,12 +61,21 @@ onMounted(async () => {
               <span v-if="entry.completedOn"> · Kurs tamamlandı</span>
             </p>
           </div>
-          <RouterLink
-            :to="{ name: 'course-detail', params: { id: entry.courseId } }"
-            class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-          >
-            Devam Et
-          </RouterLink>
+          <div class="flex items-center gap-2">
+            <RouterLink
+              v-if="entry.completedOn && entry.examId"
+              :to="{ name: 'exam-take', params: { courseId: entry.courseId } }"
+              class="rounded-md border border-indigo-300 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50"
+            >
+              Sınava Gir
+            </RouterLink>
+            <RouterLink
+              :to="{ name: 'course-detail', params: { id: entry.courseId } }"
+              class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              Devam Et
+            </RouterLink>
+          </div>
         </div>
 
         <div class="mt-3 max-w-sm">

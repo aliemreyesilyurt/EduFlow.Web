@@ -214,6 +214,12 @@ async function moveStep(index, direction) {
         >
           Yorumlar
         </RouterLink>
+        <RouterLink
+          :to="{ name: 'exam-manage', params: { id: course.id } }"
+          class="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+        >
+          Sınav
+        </RouterLink>
         <BaseButton variant="danger" class="ml-auto" :disabled="isActing" @click="handleDelete">
           Kursu Sil
         </BaseButton>
