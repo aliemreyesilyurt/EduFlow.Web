@@ -1,14 +1,17 @@
 <script setup>
 import { ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import AuthCard from '@/components/AuthCard.vue'
 import FormField from '@/components/FormField.vue'
 import AlertMessage from '@/components/AlertMessage.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import * as authApi from '@/api/auth'
 import { extractErrorMessage } from '@/api/errors'
+import { errorToast } from '@/utils/notify'
 
-const tenantSlug = ref('')
+const route = useRoute()
+
+const tenantSlug = ref(typeof route.query.tenant === 'string' ? route.query.tenant : '')
 const email = ref('')
 const password = ref('')
 const firstName = ref('')
@@ -31,7 +34,11 @@ async function handleSubmit() {
     })
     isDone.value = true
   } catch (err) {
-    error.value = extractErrorMessage(err, 'Kayıt oluşturulamadı.')
+    if (err?.response?.status === 403) {
+      errorToast('Bu kurum için dışarıdan kayıt kapalı. Kurum yöneticinizle iletişime geçin.')
+    } else {
+      error.value = extractErrorMessage(err, 'Kayıt oluşturulamadı.')
+    }
   } finally {
     isSubmitting.value = false
   }

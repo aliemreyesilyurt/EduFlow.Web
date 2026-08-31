@@ -7,9 +7,12 @@ import BaseCard from '@/components/BaseCard.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import StatTile from '@/components/StatTile.vue'
 import SkeletonBlock from '@/components/SkeletonBlock.vue'
+import CourseFormModal from '@/components/instructor/CourseFormModal.vue'
+import StepFormModal from '@/components/instructor/StepFormModal.vue'
 import * as coursesApi from '@/api/courses'
 import * as stepsApi from '@/api/steps'
 import { extractErrorMessage } from '@/api/errors'
+import { confirmDialog, successToast, errorToast } from '@/utils/notify'
 import { CourseStatus, StepContentType } from '@/constants/enums'
 
 const props = defineProps({
@@ -25,6 +28,8 @@ const isLoading = ref(true)
 const error = ref('')
 const isActing = ref(false)
 const reorderingId = ref(null)
+const showEditModal = ref(false)
+const stepModalState = ref(null) // null | 'new' | stepId
 
 const statusLabels = {
   [CourseStatus.Draft]: 'Taslak',
@@ -98,7 +103,12 @@ async function handleArchive() {
 }
 
 async function handleDelete() {
-  if (!confirm(`"${course.value.title}" kursunu silmek istediğine emin misin? Bu işlem geri alınamaz.`)) {
+  const confirmed = await confirmDialog(
+    'Kursu sil',
+    `"${course.value.title}" kursunu silmek istediğine emin misin? Bu işlem geri alınamaz.`,
+  )
+
+  if (!confirmed) {
     return
   }
 
@@ -107,15 +117,18 @@ async function handleDelete() {
 
   try {
     await coursesApi.deleteCourse(props.id)
+    successToast('Kurs silindi.')
     router.push({ name: 'dashboard' })
   } catch (err) {
-    error.value = extractErrorMessage(err, 'Kurs silinemedi.')
+    errorToast(extractErrorMessage(err, 'Kurs silinemedi.'))
     isActing.value = false
   }
 }
 
 async function handleDeleteStep(step) {
-  if (!confirm(`"${step.title}" adımını silmek istediğine emin misin?`)) {
+  const confirmed = await confirmDialog('Adımı sil', `"${step.title}" adımını silmek istediğine emin misin?`)
+
+  if (!confirmed) {
     return
   }
 
@@ -123,9 +136,10 @@ async function handleDeleteStep(step) {
 
   try {
     await stepsApi.deleteStep(step.id)
+    successToast('Adım silindi.')
     await load()
   } catch (err) {
-    error.value = extractErrorMessage(err, 'Adım silinemedi.')
+    errorToast(extractErrorMessage(err, 'Adım silinemedi.'))
   }
 }
 
@@ -189,12 +203,13 @@ async function moveStep(index, direction) {
           <p v-if="course.description" class="mt-2 text-sm text-slate-600">{{ course.description }}</p>
         </div>
 
-        <RouterLink
-          :to="{ name: 'course-manage-edit', params: { id: course.id } }"
+        <button
+          type="button"
           class="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          @click="showEditModal = true"
         >
           Bilgileri Düzenle
-        </RouterLink>
+        </button>
       </div>
 
       <div class="mt-4 flex flex-wrap gap-2">
@@ -229,12 +244,9 @@ async function moveStep(index, direction) {
     <BaseCard>
       <div class="mb-3 flex items-center justify-between">
         <h2 class="text-sm font-semibold text-slate-700">Adımlar</h2>
-        <RouterLink
-          :to="{ name: 'step-manage-create', params: { courseId: course.id } }"
-          class="text-sm font-medium text-indigo-600 hover:underline"
-        >
+        <button type="button" class="text-sm font-medium text-indigo-600 hover:underline" @click="stepModalState = 'new'">
           + Adım Ekle
-        </RouterLink>
+        </button>
       </div>
 
       <p v-if="steps.length === 0" class="text-sm text-slate-500">
@@ -273,12 +285,9 @@ async function moveStep(index, direction) {
           </div>
 
           <div class="flex items-center gap-3 text-sm">
-            <RouterLink
-              :to="{ name: 'step-manage-edit', params: { courseId: course.id, stepId: step.id } }"
-              class="text-indigo-600 hover:underline"
-            >
+            <button type="button" class="text-indigo-600 hover:underline" @click="stepModalState = step.id">
               Düzenle
-            </RouterLink>
+            </button>
             <button type="button" class="text-red-600 hover:underline" @click="handleDeleteStep(step)">
               Sil
             </button>
@@ -286,5 +295,15 @@ async function moveStep(index, direction) {
         </li>
       </ul>
     </BaseCard>
+
+    <CourseFormModal v-if="showEditModal" :course-id="props.id" @close="showEditModal = false" @saved="load" />
+
+    <StepFormModal
+      v-if="stepModalState"
+      :course-id="props.id"
+      :step-id="stepModalState === 'new' ? null : stepModalState"
+      @close="stepModalState = null"
+      @saved="load"
+    />
   </div>
 </template>

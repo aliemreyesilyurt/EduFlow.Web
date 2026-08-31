@@ -42,10 +42,18 @@ export function logoutAll() {
   return http.post('auth/logout-all', null, skipRefresh).then((r) => r.data)
 }
 
+export function changePassword(currentPassword, newPassword) {
+  return http.post('auth/password/change', { currentPassword, newPassword }).then((r) => r.data)
+}
+
 export function acceptInvitation(userId, token, password) {
   return http.post('auth/invitations/accept', { userId, token, password }, skipRefresh).then((r) => r.data)
 }
 
 export function inviteInstructor(email, firstName, lastName) {
   return http.post('auth/instructors', { email, firstName, lastName }).then((r) => r.data)
+}
+
+export function inviteStudent(email, firstName, lastName) {
+  return http.post('auth/students', { email, firstName, lastName }).then((r) => r.data)
 }

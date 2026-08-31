@@ -6,9 +6,12 @@ import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import SkeletonBlock from '@/components/SkeletonBlock.vue'
+import ExamSettingsModal from '@/components/instructor/ExamSettingsModal.vue'
+import QuestionFormModal from '@/components/instructor/QuestionFormModal.vue'
 import * as coursesApi from '@/api/courses'
 import * as examsApi from '@/api/exams'
 import { extractErrorMessage } from '@/api/errors'
+import { confirmDialog, successToast, errorToast } from '@/utils/notify'
 
 const props = defineProps({
   id: { type: String, required: true },
@@ -20,6 +23,8 @@ const isLoading = ref(true)
 const error = ref('')
 const isActing = ref(false)
 const reorderingId = ref(null)
+const showExamSettingsModal = ref(false)
+const questionModalState = ref(null) // null | 'new' | questionId
 
 async function load() {
   isLoading.value = true
@@ -75,7 +80,9 @@ async function handleUnpublish() {
 }
 
 async function handleDeleteExam() {
-  if (!confirm('Bu sınavı silmek istediğine emin misin? Bu işlem geri alınamaz.')) {
+  const confirmed = await confirmDialog('Sınavı sil', 'Bu sınavı silmek istediğine emin misin? Bu işlem geri alınamaz.')
+
+  if (!confirmed) {
     return
   }
 
@@ -84,16 +91,19 @@ async function handleDeleteExam() {
 
   try {
     await examsApi.deleteExam(exam.value.id)
+    successToast('Sınav silindi.')
     exam.value = null
   } catch (err) {
-    error.value = extractErrorMessage(err, 'Sınav silinemedi.')
+    errorToast(extractErrorMessage(err, 'Sınav silinemedi.'))
   } finally {
     isActing.value = false
   }
 }
 
 async function handleDeleteQuestion(question) {
-  if (!confirm(`Bu soruyu silmek istediğine emin misin?`)) {
+  const confirmed = await confirmDialog('Soruyu sil', 'Bu soruyu silmek istediğine emin misin?')
+
+  if (!confirmed) {
     return
   }
 
@@ -101,9 +111,10 @@ async function handleDeleteQuestion(question) {
 
   try {
     await examsApi.deleteQuestion(question.id)
+    successToast('Soru silindi.')
     await load()
   } catch (err) {
-    error.value = extractErrorMessage(err, 'Soru silinemedi.')
+    errorToast(extractErrorMessage(err, 'Soru silinemedi.'))
   }
 }
 
@@ -157,9 +168,7 @@ async function moveQuestion(index, direction) {
 
       <BaseCard v-if="!exam">
         <p class="mb-4 text-sm text-slate-600">Bu kurs için henüz bir sınav tanımlanmadı.</p>
-        <RouterLink :to="{ name: 'exam-settings', params: { courseId: id } }">
-          <BaseButton>Sınav Oluştur</BaseButton>
-        </RouterLink>
+        <BaseButton @click="showExamSettingsModal = true">Sınav Oluştur</BaseButton>
       </BaseCard>
 
       <div v-else class="space-y-6">
@@ -179,9 +188,7 @@ async function moveQuestion(index, direction) {
               </p>
             </div>
 
-            <RouterLink :to="{ name: 'exam-settings', params: { courseId: id } }">
-              <BaseButton variant="secondary">Ayarları Düzenle</BaseButton>
-            </RouterLink>
+            <BaseButton variant="secondary" @click="showExamSettingsModal = true">Ayarları Düzenle</BaseButton>
           </div>
 
           <div class="mt-4 flex flex-wrap gap-2">
@@ -198,12 +205,9 @@ async function moveQuestion(index, direction) {
         <BaseCard>
           <div class="mb-3 flex items-center justify-between">
             <h2 class="text-sm font-semibold text-slate-700">Sorular</h2>
-            <RouterLink
-              :to="{ name: 'question-manage-create', params: { courseId: id } }"
-              class="text-sm font-medium text-indigo-600 hover:underline"
-            >
+            <button type="button" class="text-sm font-medium text-indigo-600 hover:underline" @click="questionModalState = 'new'">
               + Soru Ekle
-            </RouterLink>
+            </button>
           </div>
 
           <p v-if="exam.questions.length === 0" class="text-sm text-slate-500">
@@ -242,12 +246,9 @@ async function moveQuestion(index, direction) {
               </div>
 
               <div class="flex items-center gap-3 text-sm">
-                <RouterLink
-                  :to="{ name: 'question-manage-edit', params: { courseId: id, questionId: question.id } }"
-                  class="text-indigo-600 hover:underline"
-                >
+                <button type="button" class="text-indigo-600 hover:underline" @click="questionModalState = question.id">
                   Düzenle
-                </RouterLink>
+                </button>
                 <button type="button" class="text-red-600 hover:underline" @click="handleDeleteQuestion(question)">
                   Sil
                 </button>
@@ -257,5 +258,20 @@ async function moveQuestion(index, direction) {
         </BaseCard>
       </div>
     </template>
+
+    <ExamSettingsModal
+      v-if="showExamSettingsModal"
+      :course-id="props.id"
+      @close="showExamSettingsModal = false"
+      @saved="load"
+    />
+
+    <QuestionFormModal
+      v-if="questionModalState"
+      :course-id="props.id"
+      :question-id="questionModalState === 'new' ? null : questionModalState"
+      @close="questionModalState = null"
+      @saved="load"
+    />
   </div>
 </template>

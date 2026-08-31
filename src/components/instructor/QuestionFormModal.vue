@@ -1,32 +1,44 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import FormField from '@/components/FormField.vue'
-import AlertMessage from '@/components/AlertMessage.vue'
+import { useForm, useField } from 'vee-validate'
+import * as yup from 'yup'
+import BaseModal from '@/components/BaseModal.vue'
 import BaseButton from '@/components/BaseButton.vue'
+import AlertMessage from '@/components/AlertMessage.vue'
 import SkeletonBlock from '@/components/SkeletonBlock.vue'
 import * as examsApi from '@/api/exams'
 import { extractErrorMessage } from '@/api/errors'
+import { successToast } from '@/utils/notify'
 
 const props = defineProps({
   courseId: { type: String, required: true },
   questionId: { type: String, default: null },
 })
 
-const router = useRouter()
+const emit = defineEmits(['close', 'saved'])
 
 const examId = ref(null)
-const text = ref('')
-const points = ref(1)
 const options = ref([
   { text: '', isCorrect: true },
   { text: '', isCorrect: false },
 ])
 const isLoading = ref(true)
-const isSubmitting = ref(false)
-const error = ref('')
+const apiError = ref('')
 
 const isEditing = computed(() => !!props.questionId)
+
+const schema = yup.object({
+  text: yup.string().trim().required('Soru metni zorunlu').min(3, 'Soru metni en az 3 karakter olmalı'),
+  points: yup.number().typeError('Sayı olmalı').required().min(1),
+})
+
+const { handleSubmit, setValues, isSubmitting } = useForm({
+  validationSchema: schema,
+  initialValues: { text: '', points: 1 },
+})
+
+const { value: text, errorMessage: textError } = useField('text')
+const { value: points, errorMessage: pointsError } = useField('points')
 
 onMounted(async () => {
   try {
@@ -37,16 +49,15 @@ onMounted(async () => {
       const question = exam.questions.find((q) => q.id === props.questionId)
 
       if (!question) {
-        error.value = 'Soru bulunamadı.'
+        apiError.value = 'Soru bulunamadı.'
         return
       }
 
-      text.value = question.text
-      points.value = question.points
+      setValues({ text: question.text, points: question.points })
       options.value = question.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect }))
     }
   } catch (err) {
-    error.value = extractErrorMessage(err, 'Sınav bilgisi yüklenemedi.')
+    apiError.value = extractErrorMessage(err, 'Sınav bilgisi yüklenemedi.')
   } finally {
     isLoading.value = false
   }
@@ -75,57 +86,66 @@ function setCorrect(index) {
   })
 }
 
-async function handleSubmit() {
-  error.value = ''
-  isSubmitting.value = true
+const onSubmit = handleSubmit(async (values) => {
+  apiError.value = ''
+
+  if (options.value.some((o) => !o.text.trim())) {
+    apiError.value = 'Tüm seçeneklerin metni doldurulmalı.'
+    return
+  }
 
   const payload = {
-    text: text.value,
-    points: Number(points.value),
+    text: values.text,
+    points: Number(values.points),
     options: options.value.map((o) => ({ text: o.text, isCorrect: o.isCorrect })),
   }
 
   try {
     if (isEditing.value) {
       await examsApi.updateQuestion(props.questionId, payload)
+      successToast('Soru güncellendi.')
     } else {
       await examsApi.createQuestion(examId.value, payload)
+      successToast('Soru oluşturuldu.')
     }
 
-    router.push({ name: 'exam-manage', params: { id: props.courseId } })
+    emit('saved')
+    emit('close')
   } catch (err) {
-    error.value = extractErrorMessage(err, 'Soru kaydedilemedi.')
-  } finally {
-    isSubmitting.value = false
+    apiError.value = extractErrorMessage(err, 'Soru kaydedilemedi.')
   }
-}
+})
 </script>
 
 <template>
-  <div class="mx-auto max-w-xl">
-    <h1 class="mb-6 text-xl font-semibold text-slate-800">
-      {{ isEditing ? 'Soruyu Düzenle' : 'Yeni Soru Ekle' }}
-    </h1>
-
-    <div v-if="isLoading" class="space-y-4 rounded-lg border border-slate-200 bg-white p-6">
+  <BaseModal :title="isEditing ? 'Soruyu Düzenle' : 'Yeni Soru Ekle'" size="lg" @close="emit('close')">
+    <div v-if="isLoading" class="space-y-4">
       <SkeletonBlock class="h-9 w-full" />
       <SkeletonBlock class="h-24 w-full" />
     </div>
 
-    <form v-else class="space-y-4 rounded-lg border border-slate-200 bg-white p-6" @submit.prevent="handleSubmit">
-      <AlertMessage v-if="error" variant="error">{{ error }}</AlertMessage>
+    <form v-else id="question-form" class="space-y-4" @submit="onSubmit">
+      <AlertMessage v-if="apiError" variant="error">{{ apiError }}</AlertMessage>
 
       <label class="block">
         <span class="mb-1 block text-sm font-medium text-slate-700">Soru Metni</span>
         <textarea
           v-model="text"
           rows="3"
-          required
           class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         />
+        <span v-if="textError" class="mt-1 block text-xs text-danger">{{ textError }}</span>
       </label>
 
-      <FormField v-model="points" type="number" label="Puan" minlength="1" />
+      <label class="block">
+        <span class="mb-1 block text-sm font-medium text-slate-700">Puan</span>
+        <input
+          v-model="points"
+          type="number"
+          class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        />
+        <span v-if="pointsError" class="mt-1 block text-xs text-danger">{{ pointsError }}</span>
+      </label>
 
       <div>
         <div class="mb-2 flex items-center justify-between">
@@ -148,7 +168,6 @@ async function handleSubmit() {
             <input
               v-model="option.text"
               type="text"
-              required
               placeholder="Seçenek metni"
               class="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
@@ -164,10 +183,13 @@ async function handleSubmit() {
         </div>
         <p class="mt-1 text-xs text-slate-400">Doğru seçeneği işaretlemek için radyo düğmesini kullan.</p>
       </div>
+    </form>
 
-      <BaseButton type="submit" block :disabled="isSubmitting">
+    <template #footer>
+      <BaseButton variant="secondary" :disabled="isSubmitting" @click="emit('close')">Vazgeç</BaseButton>
+      <BaseButton type="submit" form="question-form" :disabled="isSubmitting || isLoading">
         {{ isSubmitting ? 'Kaydediliyor...' : 'Kaydet' }}
       </BaseButton>
-    </form>
-  </div>
+    </template>
+  </BaseModal>
 </template>

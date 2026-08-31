@@ -1,8 +1,11 @@
 <script setup>
 import { RouterLink, RouterView, useRouter } from 'vue-router'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { Roles } from '@/constants/roles'
+import InviteUserModal from '@/components/instructor/InviteUserModal.vue'
+import TenantSettingsModal from '@/components/instructor/TenantSettingsModal.vue'
+import CreateTenantModal from '@/components/admin/CreateTenantModal.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -16,19 +19,20 @@ const studentNavItems = [
 
 const instructorNavItems = [{ name: 'dashboard', label: 'Kurslarım' }]
 
-const tenantAdminNavItems = [{ name: 'instructor-invite', label: 'Eğitmen Davet Et' }]
+const isTenantAdmin = computed(() => auth.hasRole(Roles.TenantAdmin, Roles.SysAdmin))
+const isSysAdmin = computed(() => auth.hasRole(Roles.SysAdmin))
 
 const navItems = computed(() => {
   if (auth.hasRole(Roles.Student)) {
     return studentNavItems
   }
 
-  if (auth.hasRole(Roles.TenantAdmin, Roles.SysAdmin)) {
-    return [...instructorNavItems, ...tenantAdminNavItems]
-  }
-
   return instructorNavItems
 })
+
+const inviteModalRole = ref(null) // null | 'Instructor' | 'Student'
+const showTenantSettingsModal = ref(false)
+const showCreateTenantModal = ref(false)
 
 async function handleLogout() {
   await auth.logout()
@@ -64,6 +68,39 @@ async function handleLogout() {
         </div>
 
         <div class="flex items-center gap-3">
+          <template v-if="isTenantAdmin">
+            <button
+              type="button"
+              class="hidden rounded-md border border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-700 md:inline-block"
+              @click="inviteModalRole = 'Instructor'"
+            >
+              Eğitmen Davet Et
+            </button>
+            <button
+              type="button"
+              class="hidden rounded-md border border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-700 md:inline-block"
+              @click="inviteModalRole = 'Student'"
+            >
+              Öğrenci Davet Et
+            </button>
+            <button
+              type="button"
+              class="hidden rounded-md border border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-700 md:inline-block"
+              @click="showTenantSettingsModal = true"
+            >
+              Kayıt Ayarları
+            </button>
+          </template>
+
+          <button
+            v-if="isSysAdmin"
+            type="button"
+            class="hidden rounded-md border border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-700 md:inline-block"
+            @click="showCreateTenantModal = true"
+          >
+            Kurum Oluştur
+          </button>
+
           <span class="hidden text-sm text-slate-300 sm:inline">{{ auth.user?.email }}</span>
           <span
             class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500 text-sm font-semibold text-white"
@@ -84,5 +121,9 @@ async function handleLogout() {
     <main class="mx-auto max-w-6xl px-4 py-8">
       <RouterView />
     </main>
+
+    <InviteUserModal v-if="inviteModalRole" :role="inviteModalRole" @close="inviteModalRole = null" />
+    <TenantSettingsModal v-if="showTenantSettingsModal" @close="showTenantSettingsModal = false" />
+    <CreateTenantModal v-if="showCreateTenantModal" @close="showCreateTenantModal = false" />
   </div>
 </template>
