@@ -11,6 +11,7 @@ const STORAGE_KEYS = {
   accessToken: 'eduflow.accessToken',
   refreshToken: 'eduflow.refreshToken',
   accessTokenExpiresOn: 'eduflow.accessTokenExpiresOn',
+  requiresPasswordChange: 'eduflow.requiresPasswordChange',
 }
 
 function decodeUser(accessToken) {
@@ -34,6 +35,7 @@ export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref(localStorage.getItem(STORAGE_KEYS.accessToken))
   const refreshToken = ref(localStorage.getItem(STORAGE_KEYS.refreshToken))
   const accessTokenExpiresOn = ref(localStorage.getItem(STORAGE_KEYS.accessTokenExpiresOn))
+  const requiresPasswordChange = ref(localStorage.getItem(STORAGE_KEYS.requiresPasswordChange) === 'true')
   const user = ref(decodeUser(accessToken.value))
 
   const isAuthenticated = computed(() => !!accessToken.value)
@@ -47,9 +49,11 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken.value = tokens.accessToken
     refreshToken.value = tokens.refreshToken
     accessTokenExpiresOn.value = tokens.accessTokenExpiresOn
+    requiresPasswordChange.value = !!tokens.requiresPasswordChange
     localStorage.setItem(STORAGE_KEYS.accessToken, tokens.accessToken)
     localStorage.setItem(STORAGE_KEYS.refreshToken, tokens.refreshToken)
     localStorage.setItem(STORAGE_KEYS.accessTokenExpiresOn, tokens.accessTokenExpiresOn)
+    localStorage.setItem(STORAGE_KEYS.requiresPasswordChange, String(requiresPasswordChange.value))
     user.value = decodeUser(tokens.accessToken)
   }
 
@@ -57,10 +61,17 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken.value = null
     refreshToken.value = null
     accessTokenExpiresOn.value = null
+    requiresPasswordChange.value = false
     user.value = null
     localStorage.removeItem(STORAGE_KEYS.accessToken)
     localStorage.removeItem(STORAGE_KEYS.refreshToken)
     localStorage.removeItem(STORAGE_KEYS.accessTokenExpiresOn)
+    localStorage.removeItem(STORAGE_KEYS.requiresPasswordChange)
+  }
+
+  function markPasswordChanged() {
+    requiresPasswordChange.value = false
+    localStorage.setItem(STORAGE_KEYS.requiresPasswordChange, 'false')
   }
 
   async function login(email, password) {
@@ -102,12 +113,14 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     accessToken,
     refreshToken,
+    requiresPasswordChange,
     user,
     isAuthenticated,
     roles,
     hasRole,
     setSession,
     clearSession,
+    markPasswordChanged,
     login,
     refresh,
     logout,

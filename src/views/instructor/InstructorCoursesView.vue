@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import AlertMessage from '@/components/AlertMessage.vue'
 import StarRating from '@/components/StarRating.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
@@ -8,6 +8,7 @@ import StatTile from '@/components/StatTile.vue'
 import SkeletonBlock from '@/components/SkeletonBlock.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import IconBookOpen from '@/components/icons/IconBookOpen.vue'
+import CourseFormModal from '@/components/instructor/CourseFormModal.vue'
 import * as coursesApi from '@/api/courses'
 import { extractErrorMessage } from '@/api/errors'
 import { useAuthStore } from '@/stores/auth'
@@ -15,10 +16,16 @@ import { Roles } from '@/constants/roles'
 import { CourseStatus } from '@/constants/enums'
 
 const auth = useAuthStore()
+const router = useRouter()
 
 const allCourses = ref([])
 const isLoading = ref(true)
 const error = ref('')
+const showCreateModal = ref(false)
+
+function handleCreated(course) {
+  router.push({ name: 'course-manage-detail', params: { id: course.id } })
+}
 
 const statusLabels = {
   [CourseStatus.Draft]: 'Taslak',
@@ -65,13 +72,16 @@ onMounted(async () => {
   <div>
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
       <h1 class="text-xl font-semibold text-slate-800">Kurslarım</h1>
-      <RouterLink
-        :to="{ name: 'course-manage-create' }"
+      <button
+        type="button"
         class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+        @click="showCreateModal = true"
       >
         Yeni Kurs
-      </RouterLink>
+      </button>
     </div>
+
+    <CourseFormModal v-if="showCreateModal" @close="showCreateModal = false" @saved="handleCreated" />
 
     <AlertMessage v-if="error" variant="error">{{ error }}</AlertMessage>
 

@@ -1,0 +1,147 @@
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useForm, useField } from 'vee-validate'
+import * as yup from 'yup'
+import BaseModal from '@/components/BaseModal.vue'
+import BaseButton from '@/components/BaseButton.vue'
+import AlertMessage from '@/components/AlertMessage.vue'
+import SkeletonBlock from '@/components/SkeletonBlock.vue'
+import * as examsApi from '@/api/exams'
+import { extractErrorMessage } from '@/api/errors'
+import { successToast } from '@/utils/notify'
+
+const props = defineProps({
+  courseId: { type: String, required: true },
+})
+
+const emit = defineEmits(['close', 'saved'])
+
+const examId = ref(null)
+const isLoading = ref(true)
+const apiError = ref('')
+
+const isEditing = computed(() => !!examId.value)
+
+const schema = yup.object({
+  title: yup.string().trim().required('Başlık zorunlu').min(3, 'Başlık en az 3 karakter olmalı'),
+  passScorePercentage: yup.number().typeError('Sayı olmalı').required().min(1).max(100),
+  timeLimitMinutes: yup.number().typeError('Sayı olmalı').nullable().transform((v, o) => (o === '' ? null : v)).min(1),
+  maxAttempts: yup.number().typeError('Sayı olmalı').nullable().transform((v, o) => (o === '' ? null : v)).min(1),
+})
+
+const { handleSubmit, setValues, isSubmitting } = useForm({
+  validationSchema: schema,
+  initialValues: { title: '', passScorePercentage: 60, timeLimitMinutes: '', maxAttempts: '' },
+})
+
+const { value: title, errorMessage: titleError } = useField('title')
+const { value: passScorePercentage, errorMessage: passScoreError } = useField('passScorePercentage')
+const { value: timeLimitMinutes } = useField('timeLimitMinutes')
+const { value: maxAttempts } = useField('maxAttempts')
+
+onMounted(async () => {
+  try {
+    const exam = await examsApi.getCourseExam(props.courseId)
+    examId.value = exam.id
+    setValues({
+      title: exam.title,
+      passScorePercentage: exam.passScorePercentage,
+      timeLimitMinutes: exam.timeLimitMinutes ?? '',
+      maxAttempts: exam.maxAttempts ?? '',
+    })
+  } catch (err) {
+    if (err?.response?.status !== 404) {
+      apiError.value = extractErrorMessage(err, 'Sınav bilgisi yüklenemedi.')
+    }
+  } finally {
+    isLoading.value = false
+  }
+})
+
+const onSubmit = handleSubmit(async (values) => {
+  apiError.value = ''
+
+  const payload = {
+    title: values.title,
+    passScorePercentage: Number(values.passScorePercentage),
+    timeLimitMinutes: values.timeLimitMinutes === '' || values.timeLimitMinutes == null ? null : Number(values.timeLimitMinutes),
+    maxAttempts: values.maxAttempts === '' || values.maxAttempts == null ? null : Number(values.maxAttempts),
+  }
+
+  try {
+    if (isEditing.value) {
+      await examsApi.updateExam(examId.value, payload)
+      successToast('Sınav güncellendi.')
+    } else {
+      await examsApi.createExam(props.courseId, payload)
+      successToast('Sınav oluşturuldu.')
+    }
+
+    emit('saved')
+    emit('close')
+  } catch (err) {
+    apiError.value = extractErrorMessage(err, 'Sınav kaydedilemedi.')
+  }
+})
+</script>
+
+<template>
+  <BaseModal :title="isEditing ? 'Sınav Ayarlarını Düzenle' : 'Sınav Oluştur'" @close="emit('close')">
+    <div v-if="isLoading" class="space-y-4">
+      <SkeletonBlock class="h-9 w-full" />
+      <SkeletonBlock class="h-9 w-full" />
+      <SkeletonBlock class="h-9 w-full" />
+    </div>
+
+    <form v-else id="exam-settings-form" class="space-y-4" @submit="onSubmit">
+      <AlertMessage v-if="apiError" variant="error">{{ apiError }}</AlertMessage>
+
+      <label class="block">
+        <span class="mb-1 block text-sm font-medium text-slate-700">Başlık</span>
+        <input
+          v-model="title"
+          type="text"
+          class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        />
+        <span v-if="titleError" class="mt-1 block text-xs text-danger">{{ titleError }}</span>
+      </label>
+
+      <label class="block">
+        <span class="mb-1 block text-sm font-medium text-slate-700">Geçme Notu (%)</span>
+        <input
+          v-model="passScorePercentage"
+          type="number"
+          class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        />
+        <span v-if="passScoreError" class="mt-1 block text-xs text-danger">{{ passScoreError }}</span>
+      </label>
+
+      <label class="block">
+        <span class="mb-1 block text-sm font-medium text-slate-700">Süre Sınırı (dakika, opsiyonel)</span>
+        <input
+          v-model="timeLimitMinutes"
+          type="number"
+          min="1"
+          class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        />
+      </label>
+
+      <label class="block">
+        <span class="mb-1 block text-sm font-medium text-slate-700">Deneme Hakkı (opsiyonel, boşsa sınırsız)</span>
+        <input
+          v-model="maxAttempts"
+          type="number"
+          min="1"
+          class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        />
+      </label>
+    </form>
+
+    <template #footer>
+      <BaseButton variant="secondary" :disabled="isSubmitting" @click="emit('close')">Vazgeç</BaseButton>
+      <BaseButton type="submit" form="exam-settings-form" :disabled="isSubmitting || isLoading">
+        {{ isSubmitting ? 'Kaydediliyor...' : 'Kaydet' }}
+      </BaseButton>
+    </template>
+  </BaseModal>
+</template>

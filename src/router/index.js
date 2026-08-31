@@ -60,6 +60,11 @@ const router = createRouter({
           },
         },
         {
+          path: 'change-password',
+          name: 'change-password',
+          component: () => import('@/views/account/ChangePasswordView.vue'),
+        },
+        {
           path: 'courses',
           name: 'course-catalog',
           component: () => import('@/views/student/CourseCatalogView.vue'),
@@ -106,19 +111,6 @@ const router = createRouter({
           meta: { roles: [Roles.Instructor, Roles.TenantAdmin, Roles.SysAdmin] },
         },
         {
-          path: 'manage/courses/new',
-          name: 'course-manage-create',
-          component: () => import('@/views/instructor/CourseFormView.vue'),
-          meta: { roles: [Roles.Instructor, Roles.TenantAdmin, Roles.SysAdmin] },
-        },
-        {
-          path: 'manage/courses/:id/edit',
-          name: 'course-manage-edit',
-          component: () => import('@/views/instructor/CourseFormView.vue'),
-          meta: { roles: [Roles.Instructor, Roles.TenantAdmin, Roles.SysAdmin] },
-          props: true,
-        },
-        {
           path: 'manage/courses/:id',
           name: 'course-manage-detail',
           component: () => import('@/views/instructor/CourseManageView.vue'),
@@ -140,52 +132,11 @@ const router = createRouter({
           props: true,
         },
         {
-          path: 'manage/courses/:courseId/steps/new',
-          name: 'step-manage-create',
-          component: () => import('@/views/instructor/StepFormView.vue'),
-          meta: { roles: [Roles.Instructor, Roles.TenantAdmin, Roles.SysAdmin] },
-          props: true,
-        },
-        {
-          path: 'manage/courses/:courseId/steps/:stepId/edit',
-          name: 'step-manage-edit',
-          component: () => import('@/views/instructor/StepFormView.vue'),
-          meta: { roles: [Roles.Instructor, Roles.TenantAdmin, Roles.SysAdmin] },
-          props: true,
-        },
-        {
           path: 'manage/courses/:id/exam',
           name: 'exam-manage',
           component: () => import('@/views/instructor/ExamManageView.vue'),
           meta: { roles: [Roles.Instructor, Roles.TenantAdmin, Roles.SysAdmin] },
           props: true,
-        },
-        {
-          path: 'manage/courses/:courseId/exam/settings',
-          name: 'exam-settings',
-          component: () => import('@/views/instructor/ExamFormView.vue'),
-          meta: { roles: [Roles.Instructor, Roles.TenantAdmin, Roles.SysAdmin] },
-          props: true,
-        },
-        {
-          path: 'manage/courses/:courseId/exam/questions/new',
-          name: 'question-manage-create',
-          component: () => import('@/views/instructor/QuestionFormView.vue'),
-          meta: { roles: [Roles.Instructor, Roles.TenantAdmin, Roles.SysAdmin] },
-          props: true,
-        },
-        {
-          path: 'manage/courses/:courseId/exam/questions/:questionId/edit',
-          name: 'question-manage-edit',
-          component: () => import('@/views/instructor/QuestionFormView.vue'),
-          meta: { roles: [Roles.Instructor, Roles.TenantAdmin, Roles.SysAdmin] },
-          props: true,
-        },
-        {
-          path: 'manage/instructors/invite',
-          name: 'instructor-invite',
-          component: () => import('@/views/instructor/InviteInstructorView.vue'),
-          meta: { roles: [Roles.TenantAdmin, Roles.SysAdmin] },
         },
       ],
     },
@@ -202,6 +153,10 @@ router.beforeEach((to) => {
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  if (auth.isAuthenticated && auth.requiresPasswordChange && to.name !== 'change-password') {
+    return { name: 'change-password' }
   }
 
   if (to.meta.roles && !auth.hasRole(...to.meta.roles)) {
