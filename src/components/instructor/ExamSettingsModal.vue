@@ -27,17 +27,45 @@ const schema = yup.object({
   passScorePercentage: yup.number().typeError('Sayı olmalı').required().min(1).max(100),
   timeLimitMinutes: yup.number().typeError('Sayı olmalı').nullable().transform((v, o) => (o === '' ? null : v)).min(1),
   maxAttempts: yup.number().typeError('Sayı olmalı').nullable().transform((v, o) => (o === '' ? null : v)).min(1),
+  proctoringEnabled: yup.boolean(),
+  requireCamera: yup.boolean(),
+  snapshotIntervalSeconds: yup
+    .number()
+    .typeError('Sayı olmalı')
+    .nullable()
+    .transform((v, o) => (o === '' ? null : v))
+    .min(15)
+    .max(600),
+  violationWarningThreshold: yup
+    .number()
+    .typeError('Sayı olmalı')
+    .nullable()
+    .transform((v, o) => (o === '' ? null : v))
+    .min(1),
 })
 
 const { handleSubmit, setValues, isSubmitting } = useForm({
   validationSchema: schema,
-  initialValues: { title: '', passScorePercentage: 60, timeLimitMinutes: '', maxAttempts: '' },
+  initialValues: {
+    title: '',
+    passScorePercentage: 60,
+    timeLimitMinutes: '',
+    maxAttempts: '',
+    proctoringEnabled: false,
+    requireCamera: false,
+    snapshotIntervalSeconds: 30,
+    violationWarningThreshold: 3,
+  },
 })
 
 const { value: title, errorMessage: titleError } = useField('title')
 const { value: passScorePercentage, errorMessage: passScoreError } = useField('passScorePercentage')
 const { value: timeLimitMinutes } = useField('timeLimitMinutes')
 const { value: maxAttempts } = useField('maxAttempts')
+const { value: proctoringEnabled } = useField('proctoringEnabled')
+const { value: requireCamera } = useField('requireCamera')
+const { value: snapshotIntervalSeconds } = useField('snapshotIntervalSeconds')
+const { value: violationWarningThreshold } = useField('violationWarningThreshold')
 
 onMounted(async () => {
   try {
@@ -48,6 +76,10 @@ onMounted(async () => {
       passScorePercentage: exam.passScorePercentage,
       timeLimitMinutes: exam.timeLimitMinutes ?? '',
       maxAttempts: exam.maxAttempts ?? '',
+      proctoringEnabled: exam.proctoringEnabled,
+      requireCamera: exam.requireCamera,
+      snapshotIntervalSeconds: exam.snapshotIntervalSeconds ?? '',
+      violationWarningThreshold: exam.violationWarningThreshold ?? '',
     })
   } catch (err) {
     if (err?.response?.status !== 404) {
@@ -66,6 +98,16 @@ const onSubmit = handleSubmit(async (values) => {
     passScorePercentage: Number(values.passScorePercentage),
     timeLimitMinutes: values.timeLimitMinutes === '' || values.timeLimitMinutes == null ? null : Number(values.timeLimitMinutes),
     maxAttempts: values.maxAttempts === '' || values.maxAttempts == null ? null : Number(values.maxAttempts),
+    proctoringEnabled: !!values.proctoringEnabled,
+    requireCamera: !!values.requireCamera,
+    snapshotIntervalSeconds:
+      values.snapshotIntervalSeconds === '' || values.snapshotIntervalSeconds == null
+        ? null
+        : Number(values.snapshotIntervalSeconds),
+    violationWarningThreshold:
+      values.violationWarningThreshold === '' || values.violationWarningThreshold == null
+        ? null
+        : Number(values.violationWarningThreshold),
   }
 
   try {
@@ -135,6 +177,44 @@ const onSubmit = handleSubmit(async (values) => {
           class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         />
       </label>
+
+      <div class="border-t border-slate-200 pt-4">
+        <p class="mb-3 text-sm font-medium text-slate-700">Sınav Bütünlüğü (Proctoring)</p>
+
+        <label class="flex items-center gap-2 text-sm text-slate-700">
+          <input v-model="proctoringEnabled" type="checkbox" class="h-4 w-4" />
+          Bütünlük izlemeyi etkinleştir (fullscreen, odak kaybı, kopyala-yapıştır kaydı)
+        </label>
+
+        <label class="mt-2 flex items-center gap-2 text-sm text-slate-700">
+          <input v-model="requireCamera" type="checkbox" class="h-4 w-4" :disabled="!proctoringEnabled" />
+          Kamera görüntüsü zorunlu
+        </label>
+
+        <div v-if="proctoringEnabled" class="mt-3 grid grid-cols-2 gap-3">
+          <label class="block">
+            <span class="mb-1 block text-xs font-medium text-slate-600">Snapshot Aralığı (sn)</span>
+            <input
+              v-model="snapshotIntervalSeconds"
+              type="number"
+              min="15"
+              max="600"
+              :disabled="!requireCamera"
+              class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </label>
+
+          <label class="block">
+            <span class="mb-1 block text-xs font-medium text-slate-600">Uyarı Eşiği (ihlal sayısı)</span>
+            <input
+              v-model="violationWarningThreshold"
+              type="number"
+              min="1"
+              class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </label>
+        </div>
+      </div>
     </form>
 
     <template #footer>

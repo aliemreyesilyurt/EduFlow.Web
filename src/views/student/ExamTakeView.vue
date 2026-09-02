@@ -5,14 +5,18 @@ import AlertMessage from '@/components/AlertMessage.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
 import SkeletonBlock from '@/components/SkeletonBlock.vue'
+import ProctoringConsentModal from '@/components/student/ProctoringConsentModal.vue'
 import * as examsApi from '@/api/exams'
+import * as proctoringApi from '@/api/proctoring'
 import { extractErrorMessage } from '@/api/errors'
+import { useProctoring } from '@/composables/useProctoring'
 
 const props = defineProps({
   courseId: { type: String, required: true },
 })
 
 const router = useRouter()
+const proctoring = useProctoring()
 
 const examInfo = ref(null)
 const pastAttempts = ref([])
@@ -22,6 +26,7 @@ const isLoading = ref(true)
 const isStarting = ref(false)
 const isSubmitting = ref(false)
 const error = ref('')
+const showConsentModal = ref(false)
 
 const deadlineMs = ref(null)
 const remainingSeconds = ref(null)
@@ -65,6 +70,7 @@ onBeforeUnmount(() => {
   if (timerId) {
     clearInterval(timerId)
   }
+  proctoring.stop()
 })
 
 function startTimer() {
@@ -88,7 +94,21 @@ function startTimer() {
   timerId = setInterval(tick, 1000)
 }
 
-async function handleStart() {
+function handleStart() {
+  if (examInfo.value.proctoringEnabled && !examInfo.value.consentGivenOn) {
+    showConsentModal.value = true
+    return
+  }
+
+  beginAttempt()
+}
+
+async function handleConsentAccept() {
+  showConsentModal.value = false
+  await beginAttempt()
+}
+
+async function beginAttempt() {
   isStarting.value = true
   error.value = ''
 
@@ -96,6 +116,15 @@ async function handleStart() {
     attempt.value = await examsApi.startExamAttempt(props.courseId)
     answers.value = {}
     startTimer()
+
+    if (examInfo.value.proctoringEnabled) {
+      await proctoringApi.giveConsent(attempt.value.id)
+      await proctoring.start({
+        id: attempt.value.id,
+        requireCamera: examInfo.value.requireCamera,
+        snapshotIntervalSeconds: examInfo.value.snapshotIntervalSeconds,
+      })
+    }
   } catch (err) {
     error.value = extractErrorMessage(err, 'Sınav başlatılamadı.')
   } finally {
@@ -111,6 +140,8 @@ async function handleSubmit() {
   isSubmitting.value = true
   error.value = ''
 
+  await proctoring.flush()
+
   const payload = Object.entries(answers.value).map(([questionId, selectedOptionId]) => ({
     questionId,
     selectedOptionId,
@@ -118,6 +149,7 @@ async function handleSubmit() {
 
   try {
     const result = await examsApi.submitExamAttempt(attempt.value.id, payload)
+    await proctoring.stop()
     router.push({ name: 'exam-result', params: { courseId: props.courseId, attemptId: result.id } })
   } catch (err) {
     error.value = extractErrorMessage(err, 'Sınav gönderilemedi.')
@@ -177,6 +209,14 @@ async function handleSubmit() {
         <p class="text-sm font-medium text-slate-700">Kalan süre: {{ remainingLabel }}</p>
       </BaseCard>
 
+      <AlertMessage v-if="proctoring.thresholdExceeded.value" variant="error">
+        Sınav bütünlüğü ihlal sayınız eşiği aştı. Bu deneme eğitmen incelemesine gönderilecek.
+      </AlertMessage>
+
+      <AlertMessage v-if="proctoring.cameraError.value" variant="error">
+        {{ proctoring.cameraError.value }}
+      </AlertMessage>
+
       <BaseCard v-for="question in examInfo.questions" :key="question.id">
         <p class="font-medium text-slate-800">{{ question.order }}. {{ question.text }}</p>
         <p class="mt-1 text-xs text-slate-400">{{ question.points }} puan</p>
@@ -203,5 +243,13 @@ async function handleSubmit() {
         {{ isSubmitting ? 'Gönderiliyor...' : 'Sınavı Bitir' }}
       </BaseButton>
     </template>
+
+    <ProctoringConsentModal
+      v-if="showConsentModal"
+      :consent-text="examInfo.consentText"
+      :require-camera="examInfo.requireCamera"
+      @accept="handleConsentAccept"
+      @cancel="showConsentModal = false"
+    />
   </div>
 </template>
