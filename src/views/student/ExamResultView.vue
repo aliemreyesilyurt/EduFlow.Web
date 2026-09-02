@@ -16,6 +16,7 @@ const props = defineProps({
 
 const attempt = ref(null)
 const canRetry = ref(false)
+const rewardPoints = ref(0)
 const isLoading = ref(true)
 const error = ref('')
 
@@ -26,6 +27,7 @@ onMounted(async () => {
     try {
       const examInfo = await examsApi.getExamForTaking(props.courseId)
       canRetry.value = examInfo.attemptsRemaining === null || examInfo.attemptsRemaining > 0
+      rewardPoints.value = examInfo.rewardPoints ?? 0
     } catch {
       canRetry.value = false
     }
@@ -60,6 +62,13 @@ onMounted(async () => {
       <p class="mt-2 text-sm text-slate-600">
         Puan: %{{ attempt.scorePercentage?.toFixed(0) }} (Geçme notu: %{{ attempt.passScorePercentage }})
       </p>
+
+      <AlertMessage v-if="attempt.pointsAwarded" variant="success" class="mt-3">
+        🎉 {{ rewardPoints }} puan kazandınız!
+      </AlertMessage>
+      <AlertMessage v-else-if="attempt.passed && attempt.requiresReview" variant="warning" class="mt-3">
+        Bu deneme incelemeye alındı — puan kazanımı eğitmenin onayından sonra hesabınıza yansıyacak.
+      </AlertMessage>
 
       <RouterLink v-if="canRetry" :to="{ name: 'exam-take', params: { courseId } }" class="mt-4 inline-block">
         <BaseButton variant="secondary">Tekrar Dene</BaseButton>

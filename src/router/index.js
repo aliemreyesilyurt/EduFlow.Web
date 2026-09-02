@@ -84,6 +84,12 @@ const router = createRouter({
           meta: { roles: [Roles.Student] },
         },
         {
+          path: 'points',
+          name: 'my-points',
+          component: () => import('@/views/student/MyPointsView.vue'),
+          meta: { roles: [Roles.Student] },
+        },
+        {
           path: 'courses/:courseId/steps/:stepId',
           name: 'step-viewer',
           component: () => import('@/views/student/StepViewerView.vue'),
@@ -151,6 +157,12 @@ const router = createRouter({
           component: () => import('@/views/instructor/ProctoringReportView.vue'),
           meta: { roles: [Roles.Instructor, Roles.TenantAdmin, Roles.SysAdmin] },
           props: true,
+        },
+        {
+          path: 'points-rules',
+          name: 'points-rules',
+          component: () => import('@/views/instructor/PointsRulesView.vue'),
+          meta: { roles: [Roles.TenantAdmin, Roles.SysAdmin] },
         },
       ],
     },

@@ -24,3 +24,8 @@ export const ProctoringEventType = {
   CameraDenied: 7,
   CameraStopped: 8,
 }
+
+// Mirrors EduFlow.Domain.Enums.PointsReason (serialized as an int by the API).
+export const PointsReason = {
+  ExamPassed: 0,
+}

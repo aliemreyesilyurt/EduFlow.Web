@@ -42,6 +42,7 @@ const schema = yup.object({
     .nullable()
     .transform((v, o) => (o === '' ? null : v))
     .min(1),
+  rewardPoints: yup.number().typeError('Sayı olmalı').required().min(0),
 })
 
 const { handleSubmit, setValues, isSubmitting } = useForm({
@@ -55,6 +56,7 @@ const { handleSubmit, setValues, isSubmitting } = useForm({
     requireCamera: false,
     snapshotIntervalSeconds: 30,
     violationWarningThreshold: 3,
+    rewardPoints: 0,
   },
 })
 
@@ -66,6 +68,7 @@ const { value: proctoringEnabled } = useField('proctoringEnabled')
 const { value: requireCamera } = useField('requireCamera')
 const { value: snapshotIntervalSeconds } = useField('snapshotIntervalSeconds')
 const { value: violationWarningThreshold } = useField('violationWarningThreshold')
+const { value: rewardPoints, errorMessage: rewardPointsError } = useField('rewardPoints')
 
 onMounted(async () => {
   try {
@@ -80,6 +83,7 @@ onMounted(async () => {
       requireCamera: exam.requireCamera,
       snapshotIntervalSeconds: exam.snapshotIntervalSeconds ?? '',
       violationWarningThreshold: exam.violationWarningThreshold ?? '',
+      rewardPoints: exam.rewardPoints ?? 0,
     })
   } catch (err) {
     if (err?.response?.status !== 404) {
@@ -108,6 +112,7 @@ const onSubmit = handleSubmit(async (values) => {
       values.violationWarningThreshold === '' || values.violationWarningThreshold == null
         ? null
         : Number(values.violationWarningThreshold),
+    rewardPoints: Number(values.rewardPoints),
   }
 
   try {
@@ -176,6 +181,17 @@ const onSubmit = handleSubmit(async (values) => {
           min="1"
           class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         />
+      </label>
+
+      <label class="block">
+        <span class="mb-1 block text-sm font-medium text-slate-700">Kazanılacak Puan (geçince, 0 = yok)</span>
+        <input
+          v-model="rewardPoints"
+          type="number"
+          min="0"
+          class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        />
+        <span v-if="rewardPointsError" class="mt-1 block text-xs text-danger">{{ rewardPointsError }}</span>
       </label>
 
       <div class="border-t border-slate-200 pt-4">

@@ -4,15 +4,61 @@ export function getCourseExam(courseId) {
   return http.get(`courses/${courseId}/exam`).then((r) => r.data)
 }
 
-export function createExam(courseId, { title, passScorePercentage, timeLimitMinutes, maxAttempts }) {
+export function createExam(
+  courseId,
+  {
+    title,
+    passScorePercentage,
+    timeLimitMinutes,
+    maxAttempts,
+    proctoringEnabled,
+    requireCamera,
+    snapshotIntervalSeconds,
+    violationWarningThreshold,
+    rewardPoints,
+  },
+) {
   return http
-    .post(`courses/${courseId}/exam`, { title, passScorePercentage, timeLimitMinutes, maxAttempts })
+    .post(`courses/${courseId}/exam`, {
+      title,
+      passScorePercentage,
+      timeLimitMinutes,
+      maxAttempts,
+      proctoringEnabled,
+      requireCamera,
+      snapshotIntervalSeconds,
+      violationWarningThreshold,
+      rewardPoints,
+    })
     .then((r) => r.data)
 }
 
-export function updateExam(examId, { title, passScorePercentage, timeLimitMinutes, maxAttempts }) {
+export function updateExam(
+  examId,
+  {
+    title,
+    passScorePercentage,
+    timeLimitMinutes,
+    maxAttempts,
+    proctoringEnabled,
+    requireCamera,
+    snapshotIntervalSeconds,
+    violationWarningThreshold,
+    rewardPoints,
+  },
+) {
   return http
-    .put(`exams/${examId}`, { title, passScorePercentage, timeLimitMinutes, maxAttempts })
+    .put(`exams/${examId}`, {
+      title,
+      passScorePercentage,
+      timeLimitMinutes,
+      maxAttempts,
+      proctoringEnabled,
+      requireCamera,
+      snapshotIntervalSeconds,
+      violationWarningThreshold,
+      rewardPoints,
+    })
     .then((r) => r.data)
 }
 

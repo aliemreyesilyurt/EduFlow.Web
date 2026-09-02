@@ -15,6 +15,7 @@ const userInitial = computed(() => auth.user?.email?.[0]?.toUpperCase() ?? '?')
 const studentNavItems = [
   { name: 'course-catalog', label: 'Kurs Kataloğu' },
   { name: 'my-courses', label: 'Kurslarım' },
+  { name: 'my-points', label: 'Puanlarım' },
 ]
 
 const instructorNavItems = [{ name: 'dashboard', label: 'Kurslarım' }]
@@ -27,7 +28,9 @@ const navItems = computed(() => {
     return studentNavItems
   }
 
-  return instructorNavItems
+  return isTenantAdmin.value
+    ? [...instructorNavItems, { name: 'points-rules', label: 'Puan Kuralları' }]
+    : instructorNavItems
 })
 
 const inviteModalRole = ref(null) // null | 'Instructor' | 'Student'
