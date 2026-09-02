@@ -13,8 +13,12 @@ const emit = defineEmits(['close'])
 const settings = ref(null)
 const isLoading = ref(true)
 const isSaving = ref(false)
+const isSavingProctoring = ref(false)
 const apiError = ref('')
 const copied = ref(false)
+
+const consentText = ref('')
+const retentionDays = ref(30)
 
 const registrationLink = computed(() =>
   settings.value ? `${window.location.origin}/register/student?tenant=${settings.value.slug}` : '',
@@ -26,6 +30,8 @@ async function load() {
 
   try {
     settings.value = await tenantsApi.getSettings()
+    consentText.value = settings.value.proctoringConsentText ?? ''
+    retentionDays.value = settings.value.proctoringRetentionDays
   } catch (err) {
     apiError.value = extractErrorMessage(err, 'Kayıt ayarları yüklenemedi.')
   } finally {
@@ -41,12 +47,34 @@ async function handleToggle() {
   apiError.value = ''
 
   try {
-    settings.value = await tenantsApi.updateSettings(nextValue)
+    settings.value = await tenantsApi.updateSettings({
+      allowSelfRegistration: nextValue,
+      proctoringConsentText: settings.value.proctoringConsentText,
+      proctoringRetentionDays: settings.value.proctoringRetentionDays,
+    })
     successToast(nextValue ? 'Öz-kayıt açıldı.' : 'Öz-kayıt kapatıldı.')
   } catch (err) {
     errorToast(extractErrorMessage(err, 'Ayar güncellenemedi.'))
   } finally {
     isSaving.value = false
+  }
+}
+
+async function handleSaveProctoring() {
+  isSavingProctoring.value = true
+  apiError.value = ''
+
+  try {
+    settings.value = await tenantsApi.updateSettings({
+      allowSelfRegistration: settings.value.allowSelfRegistration,
+      proctoringConsentText: consentText.value.trim() === '' ? null : consentText.value,
+      proctoringRetentionDays: Number(retentionDays.value),
+    })
+    successToast('Sınav bütünlüğü ayarları kaydedildi.')
+  } catch (err) {
+    errorToast(extractErrorMessage(err, 'Ayar güncellenemedi.'))
+  } finally {
+    isSavingProctoring.value = false
   }
 }
 
@@ -101,6 +129,38 @@ async function copyLink() {
           />
           <BaseButton variant="secondary" @click="copyLink">{{ copied ? 'Kopyalandı' : 'Kopyala' }}</BaseButton>
         </div>
+      </div>
+
+      <div class="border-t border-slate-200 pt-5">
+        <p class="mb-1 text-sm font-medium text-slate-700">Sınav Bütünlüğü (Proctoring) — KVKK</p>
+        <p class="mb-3 text-xs text-slate-500">
+          Kamera görüntüsü toplayan sınavlarda öğrenciye gösterilecek açık rıza metni ve
+          snapshot'ların saklanacağı gün sayısı. Metin boş bırakılırsa varsayılan metin kullanılır.
+        </p>
+
+        <label class="block">
+          <span class="mb-1 block text-sm font-medium text-slate-700">Rıza Metni (opsiyonel)</span>
+          <textarea
+            v-model="consentText"
+            rows="4"
+            class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+        </label>
+
+        <label class="mt-3 block">
+          <span class="mb-1 block text-sm font-medium text-slate-700">Snapshot Saklama Süresi (gün)</span>
+          <input
+            v-model="retentionDays"
+            type="number"
+            min="1"
+            max="365"
+            class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+        </label>
+
+        <BaseButton class="mt-3" variant="secondary" :disabled="isSavingProctoring" @click="handleSaveProctoring">
+          {{ isSavingProctoring ? 'Kaydediliyor...' : 'Bütünlük Ayarlarını Kaydet' }}
+        </BaseButton>
       </div>
     </div>
 

@@ -196,6 +196,12 @@ async function moveQuestion(index, direction) {
             <BaseButton v-else variant="secondary" :disabled="isActing" @click="handleUnpublish">
               Yayından Kaldır
             </BaseButton>
+            <RouterLink
+              :to="{ name: 'exam-attempts', params: { id } }"
+              class="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            >
+              Denemeler{{ exam.proctoringEnabled ? ' & Bütünlük' : '' }}
+            </RouterLink>
             <BaseButton variant="danger" class="ml-auto" :disabled="isActing" @click="handleDeleteExam">
               Sınavı Sil
             </BaseButton>
