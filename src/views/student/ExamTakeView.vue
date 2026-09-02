@@ -112,6 +112,13 @@ async function beginAttempt() {
   isStarting.value = true
   error.value = ''
 
+  // Fullscreen must be requested synchronously off the click that led here (button click, or the
+  // consent modal's accept click) — browsers drop "user activation" after an awaited network call,
+  // so requesting it *after* startExamAttempt/giveConsent below gets silently rejected instead.
+  if (examInfo.value.proctoringEnabled) {
+    await proctoring.requestFullscreen()
+  }
+
   try {
     attempt.value = await examsApi.startExamAttempt(props.courseId)
     answers.value = {}
@@ -123,6 +130,7 @@ async function beginAttempt() {
         id: attempt.value.id,
         requireCamera: examInfo.value.requireCamera,
         snapshotIntervalSeconds: examInfo.value.snapshotIntervalSeconds,
+        useFullscreen: false,
       })
     }
   } catch (err) {

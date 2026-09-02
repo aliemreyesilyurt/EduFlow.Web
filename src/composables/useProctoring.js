@@ -236,5 +236,5 @@ export function useProctoring() {
     attemptId = null
   }
 
-  return { violationCount, requiresReview, thresholdExceeded, cameraError, start, stop, flush }
+  return { violationCount, requiresReview, thresholdExceeded, cameraError, requestFullscreen, start, stop, flush }
 }
